@@ -1,5 +1,7 @@
 # NHẬT KÝ SỬ DỤNG AI (AI-USE LOG)
 > **Dự án:** Track A — Dr May Day: Rule Engine Sprint  
+> **Mã nhóm:** Nhóm 18 + 19  
+> **Thành viên:** 202414288, 202414324, 202414276, 202414384  
 > **Tuân thủ:** Section 5.3 của đề thi (ai-allowed, bắt buộc khai báo và kiểm chứng)  
 
 | Ngày | Công cụ / Model | Mục đích hỗ trợ | Phạm vi file | Kiểm chứng bởi nhóm | Quyết định của nhóm | Thành viên chịu trách nhiệm |

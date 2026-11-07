@@ -1,8 +1,8 @@
 # BẢN GHI QUYẾT ĐỊNH KIẾN TRÚC (ARCHITECTURAL DECISION RECORDS - ADR)
 > **Dự án:** Track A — Dr May Day: Rule Engine Sprint  
 > **Mã đề:** KTPMUD-BKT-2026-PILOT  
-> **Mã nhóm:** [Điền mã nhóm, ví dụ: Nhóm 02]  
-> **Thành viên:** [MSSV 1], [MSSV 2], [MSSV 3]  
+> **Mã nhóm:** Nhóm 18 + 19  
+> **Thành viên:** 202414288, 202414324, 202414276, 202414384  
 > **Mốc hoàn thành:** Checkpoint 1 (M1 — Understand)  
 
 ---
