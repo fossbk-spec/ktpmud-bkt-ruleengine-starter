@@ -33,3 +33,4 @@ pytest -q
   (xem BKT-PR-2b trong de xuat KTPMUD). GV/TA se cham bang bo test rieng.
 - Nop bai qua `ktpmud-project` theo dung huong dan `nop_bai.md` cua KTPMUD,
   khong tao ha tang nop bai moi.
+  educational/synthetic — not for clinical use
