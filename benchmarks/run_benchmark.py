@@ -6,6 +6,11 @@ import platform
 import statistics
 import sys
 import time
+from pathlib import Path
+
+# Tự động thêm thư mục gốc dự án vào đường dẫn tìm kiếm của Python
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from rule_engine.classifier import classify, clear_audit_logs
 
 WARMUP_RUNS = 100
