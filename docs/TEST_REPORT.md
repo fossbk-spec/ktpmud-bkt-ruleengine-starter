@@ -187,5 +187,5 @@ Dùng nền P3. Với mỗi mốc tuổi, thử HATT ngay dưới ngưỡng (s�
 
 ## 7. Trạng thái xác nhận từ Issue #15
 
-- **TC31 (Q1: Tầng 2 đạt nhưng HATT null)** và **TC04 (Q4: trường nullable vắng key)**: Đã được xác nhận tại `[fossbk-spec/ktpmud-project#15](https://github.com/fossbk-spec/ktpmud-project/issues/15)`.
+- **TC31 (Q1: Tầng 2 đạt nhưng HATT null)** và **TC04 (Q4: trường nullable vắng key)**: Đã được xác nhận tại https://github.com/fossbk-spec/ktpmud-project/issues/15.
 - **TC03, TC05, TC08, TC11, TC14, TC33, TC34**: Đã cập nhật theo đúng thứ tự ưu tiên `R-SOC > R01-PV > R02-PV > R03-PV` và nguyên tắc "không hạ mức" tại Issue #15.
