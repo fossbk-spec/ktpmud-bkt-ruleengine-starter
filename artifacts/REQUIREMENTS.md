@@ -71,7 +71,7 @@ Bảng chính sách xử lý dữ liệu theo chuẩn thống nhất tại [Issu
 
 ## 4. TIÊU CHÍ NGHIỆM THU CHI TIẾT (ACCEPTANCE CRITERIA)
 
-### 4.1. Tiêu chí cho từng Rule (Rule-Level Acceptance Criteria)
+### 4.1. Tiêu chí cho từng Rule nghiệp vụ (Rule-Level Acceptance Criteria)
 
 | Mã AC | Input kiểm thử cụ thể | Kết quả kỳ vọng (`muc_do`, `rule_id`) | Diễn giải logic |
 | :--- | :--- | :--- | :--- |
@@ -87,6 +87,15 @@ Bảng chính sách xử lý dữ liệu theo chuẩn thống nhất tại [Issu
 | **AC-MISS-HA** | Thỏa R01, `tuoi: 20`, `huyet_ap_tam_thu: null` | `muc_do: "PHAN_VE"`<br>`rule_id: "R01-PV"` | Thiếu HATT nhưng đã thỏa Tầng 2, không hạ mức xuống THEO_DOI. |
 | **AC-MISS-AGE**| Thỏa R01, không có trường `tuoi` | `muc_do: "THEO_DOI"`<br>`rule_id: null` | Thiếu tuổi không thể đánh giá Tầng 1, trả THEO_DOI theo đặc tả. |
 | **AC-NONE** | `co_di_nguyen_nghi_ngo: True`, chỉ có `co_ton_thuong_da_niem_mac: True` (1/4 cơ quan) | `muc_do: "THEO_DOI"`<br>`rule_id: null` | Có triệu chứng nhưng không đủ điều kiện kích hoạt bất kỳ rule nào. |
+
+### 4.2. Tiêu chí nghiệm thu Hợp đồng & Phi chức năng (Interface & Non-Functional AC)
+
+| Mã AC | Hạng mục kiểm tra | Điều kiện nghiệm thu (Acceptance Criteria) |
+| :--- | :--- | :--- |
+| **AC-IF-01** | **Output Contract** | Hàm `classify(patient)` luôn trả về dictionary/object chứa đầy đủ 3 trường bắt buộc: `muc_do` (string), `rule_id` (string hoặc null), `ly_do` (string mô tả căn cứ logic). |
+| **AC-IF-02** | **Robustness** | Không ném ngoại lệ chưa bắt (uncaught exception) khi thiếu khóa hoặc giá trị `None`; tự động fallback an toàn theo chính sách A-04. |
+| **AC-NFR-01** | **Tính tất định (Determinism)** | Với cùng một bộ dữ liệu đầu vào, kết quả trả về luôn giống nhau 100% qua mọi lần chạy (không phụ thuộc trạng thái ngẫu nhiên hay môi trường). |
+| **AC-NFR-02** | **Độ trễ thực thi (Latency)** | Đánh giá rule bằng Pure Python trong bộ nhớ; độ trễ xử lý đơn lẻ $\le 1\text{ ms}$, p95 benchmark $< 100\text{ ms}$ cho 1.000 ca kiểm thử. |
 
 ---
 
