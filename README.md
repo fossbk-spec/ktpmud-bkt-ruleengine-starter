@@ -1,35 +1,22 @@
-# KTPMUD BKT-1 (Track A) — Dr May Day: Rule Engine Sprint — Starter
+# KTPMUD BKT-1 (Track A) — Dr May Day: Rule Engine Sprint (Nhóm 62)
 
-Khung project khoi dong cho **Bai kiem tra Hackathon BKT-1 (Track A)**, mon
-Ky thuat Phan mem Ung dung (KTPMUD). **Day la skeleton rong**, khong phai loi
-giai mau — sinh vien fork repo nay va hien thuc `rule_engine/classifier.py`.
+> **Disclaimer:** `educational/synthetic — not for clinical use`.  
+> Dự án này chỉ phục vụ mục đích học tập và kiểm thử với dữ liệu giả lập (synthetic), tuyệt đối không sử dụng cho chẩn đoán hay điều trị lâm sàng thực tế.
 
-## Boi canh
+## 1. Giới thiệu
+Module Rule Engine độc lập (`rule_engine/classifier.py`) phân loại nguy cơ phản vệ theo bảng quyết định WAO/EAACI V1 tại [`docs/decision-table.md`](docs/decision-table.md) và hướng dẫn tại Issue #15 (`R-SOC > R01-PV > R02-PV > R03-PV`) thành 3 mức:
+- `SOC_PHAN_VE` (`rule_id = "R-SOC"`)
+- `PHAN_VE` (`rule_id = "R01-PV" | "R02-PV" | "R03-PV"`)
+- `THEO_DOI` (`rule_id = null`)
 
-**Dac ta chinh thuc (Data Dictionary + bang quyet dinh V1) nam o
-[`docs/decision-table.md`](docs/decision-table.md) trong chinh repo nay.**
-`do_an_mon_hoc.md` cua KTPMUD chi yeu cau tuan thu chuan WAO/EAACI, khong co
-bang chi tiet - dung dung `docs/decision-table.md` lam nguon duy nhat.
-
-**Khong tu suy dien nguong/quy tac lam sang moi ngoai `docs/decision-table.md`.**
-
-## Cach chay
+## 2. Cài đặt và Chạy kiểm thử từ Clean Checkout
 
 ```bash
+python -m venv .venv
+# Kích hoạt môi trường ảo trên Windows:
+.venv\Scripts\activate
+# Hoặc trên macOS/Linux:
+source .venv/bin/activate
+
 pip install -r requirements.txt
 pytest -q
-```
-
-## MVP bat buoc
-
-- Ham `classify()` trong `rule_engine/classifier.py` chay dung theo dac ta.
-- Co bo test tu dong (`pytest`) voi it nhat 1 ca cho moi muc nguy co.
-- Benchmark latency < 100ms (tu do, ghi vao bao cao np).
-- Audit trail `[Timestamp, User_UUID, Action_Type, Status]` cho moi lan phan loai.
-
-## Luu y
-
-- Day la khung khoi dong — **khong chua bo test an dung de cham diem**
-  (xem BKT-PR-2b trong de xuat KTPMUD). GV/TA se cham bang bo test rieng.
-- Nop bai qua `ktpmud-project` theo dung huong dan `nop_bai.md` cua KTPMUD,
-  khong tao ha tang nop bai moi.
