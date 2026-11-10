@@ -1,57 +1,52 @@
-# ADR-001: Lựa chọn Rule-Based Engine
+# ADR-001: Kiến trúc Rule Engine Tất định, Thứ tự Ưu tiên và Đánh đổi Không hạ mức
 
-- Liên quan: `REQUIREMENTS.md`, `acceptance-criteria.md`, `test-plan.md`
+* **Trạng thái:** Accepted (Đã cập nhật theo phản hồi Checkpoint 1 & Issue #15)
+* **Ngày cập nhật:** 11/11/2026
+* **Nhóm thực hiện:** Nhóm 62 (Track A — Dr May Day: Rule Engine Sprint)
 
-## 1. Context
-- Module cần phân loại dữ liệu đầu vào thành `SOC_PHAN_VE`, `PHAN_VE` hoặc `THEO_DOI` theo bảng quyết định WAO/EAACI V1 trong `docs/decision-table.md`.
-- Bảng quyết định là contract đã khóa của đề thi: ngưỡng và quy tắc rõ ràng, không được tự thay đổi hay thêm quy tắc lâm sàng ngoài bảng.
-- Kết quả cần tất định (cùng input hợp lệ cho cùng output) và giải thích được qua mã quy tắc (`R-SOC`, `R01-PV`, `R02-PV`, `R03-PV`).
-- Đề yêu cầu audit trail `[Timestamp, User_UUID, Action_Type, Status]`, zero PII, p95 < 100 ms, và loại trừ machine learning khỏi phạm vi (Mục 7.4 của đề).
-- Phạm vi là một module đánh giá độc lập, không phải hệ thống bệnh viện.
+## 1. Bối cảnh (Context)
 
-## 2. Decision
-Dùng **Rule-Based Engine** cài đặt trong `rule_engine/classifier.py`, với các nguyên tắc thiết kế sau:
+Module Rule Engine (`rule_engine/classifier.py`) cần phân loại nguy cơ phản vệ theo bảng quyết định WAO/EAACI V1 (`docs/decision-table.md`) thành 3 mức: `SOC_PHAN_VE`, `PHAN_VE`, `THEO_DOI`. Hệ thống phải thỏa mãn đồng thời các ràng buộc kỹ thuật và an toàn miền y tế:
+- Hoạt động hoàn toàn tất định (deterministic), không dùng Machine Learning/LLM, độ trễ `p95 < 100 ms`.
+- Đảm bảo nguyên tắc **Zero PII** (không tiếp nhận, không lưu trữ và không xuất thông tin định danh cá nhân hay dữ liệu lâm sàng thô trong `ly_do` và `Audit Trail`).
+- Tuân thủ thứ tự ưu tiên quy tắc và nguyên tắc **"Không hạ mức" (No-Downgrade)** đối với các ca phản vệ rõ ràng theo kết luận tại Issue #15 (`fossbk-spec/ktpmud-project#15`).
 
-1. **Bám contract:** cài đặt đúng điều kiện R01-PV, R02-PV, R03-PV và R-SOC theo `decision-table.md`; không bổ sung ngưỡng hay quy tắc khác.
-2. **Thứ tự đánh giá cố định:** kiểm tra hợp lệ đầu vào, sau đó Tầng 2 (xác định các kịch bản khớp), rồi Tầng 1 (sốc nếu đạt Tầng 2 và HATT dưới ngưỡng theo tuổi). Ưu tiên kết quả: R-SOC > R03-PV > R02-PV; R01-PV loại trừ với R02/R03 vì khác `co_di_nguyen_nghi_ngo`. Không khớp gì thì `THEO_DOI` với `rule_id = null`.
-3. **Kiểm tra đầu vào trước khi đánh giá:** dữ liệu thiếu, sai kiểu, ngoài miền hoặc có trường lạ trả `THEO_DOI`; không ép kiểu, không coi dữ liệu thiếu là `false`, không ném exception ra ngoài. Chi tiết ở `REQUIREMENTS.md` mục 5.
-4. **Tính toán an toàn số học:** so sánh ngưỡng dùng `<` thực sự; tiêu chí giảm > 30% tính bằng số nguyên (`10 × HATT < 7 × HATT_nền`) để tránh sai số float.
-5. **Tập trung quy tắc:** ngưỡng và điều kiện khai báo ở một chỗ, tách khỏi luồng xử lý, để review và test đối chiếu trực tiếp với decision table.
-6. **Kết quả truy vết được:** trả `{muc_do, rule_id, ly_do}`; `ly_do` chỉ nêu quy tắc hoặc nhóm lý do, không chứa dữ liệu lâm sàng thô và không có lời khuyên điều trị.
-7. **Audit tối thiểu:** mỗi lần phân loại ghi đúng 4 trường `[Timestamp, User_UUID, Action_Type, Status]`. `User_UUID` là của người vận hành do bên gọi cung cấp, không phải bệnh nhân. Audit không chứa input hay triệu chứng.
-8. **Giữ module độc lập:** không đảm nhiệm giao diện, quản lý hồ sơ hoặc lưu trữ dữ liệu bệnh nhân. Bản ghi audit là nhật ký thao tác, không phải kho dữ liệu bệnh nhân.
+## 2. Quyết định Thiết kế (Decision)
 
-## 3. Alternatives
+### 2.1. Kiến trúc Đánh giá Luật 2 Tầng Tất định & Tính toán Số nguyên
+- Tách bạch rõ 3 bước xử lý tuần tự trong `classify()`:
+  1. **Sanitization & Validation:** Lọc khóa hợp lệ và kiểm tra kiểu dữ liệu.
+  2. **Rule Evaluation (Tầng 2 → Tầng 1):** Đánh giá 3 kịch bản phản vệ Tầng 2 trước; chỉ khi đạt ít nhất một kịch bản Tầng 2 mới kiểm tra ngưỡng tụt huyết áp tâm thu theo tuổi ở Tầng 1 (`R-SOC`).
+  3. **Audit Logging:** Ghi bản ghi kiểm toán 4 trường tĩnh `[Timestamp, User_UUID, Action_Type, Status]`.
+- Với tiêu chí người lớn (`tuoi >= 18`) tụt HATT > 30% so với `huyet_ap_tam_thu_nen`, sử dụng phép nhân số nguyên **`10 * HATT < 7 * HATT_nen`** thay vì số thực `HATT < 0.7 * HATT_nen` để triệt tiêu hoàn toàn sai số dấu phẩy động (floating-point precision error) tại điểm biên đúng 70%.
 
-- **AI / Machine Learning Classification** — không chọn vì ngoài phạm vi theo đề (Mục 7.4); cần dữ liệu huấn luyện mà dự án chỉ có dữ liệu synthetic; kết quả khó giải thích bằng mã quy tắc; khó đảm bảo tính tất định và khó đối chiếu với bảng quyết định đã khóa.
-- **Hybrid AI + Rule-Based Engine** — không chọn vì thêm độ phức tạp và bề mặt kiểm thử mà contract không yêu cầu; phần AI có thể tạo kết quả trái bảng quyết định, vi phạm quy định "không sửa hay suy diễn quy tắc ngoài contract".
-- **Bảng quyết định dạng dữ liệu (đọc từ file cấu hình)** — có thể cân nhắc về sau; ở V1 số quy tắc ít và cố định, nên hard-code có cấu trúc rõ ràng thì đơn giản và dễ test hơn. Điều kiện sốc theo tuổi cũng cần logic tính toán chứ không chỉ tra bảng.
+### 2.2. Thứ tự Ưu tiên Quy tắc (Rule Priority — Issue #15)
+- Thứ tự ưu tiên chuẩn được khóa cố định là: **`R-SOC > R01-PV > R02-PV > R03-PV`**.
+- Ở Tầng 2:
+  - `R01-PV` (`co_di_nguyen_nghi_ngo = false`) loại trừ tương hỗ với `R02-PV` và `R03-PV` (`co_di_nguyen_nghi_ngo = true`).
+  - Khi bệnh nhân có `co_di_nguyen_nghi_ngo = true` và đồng thời thỏa cả `R02-PV` (≥ 2/4 hệ cơ quan dương tính) lẫn `R03-PV` (hô hấp không qua đường hít hoặc tuần hoàn), hệ thống ưu tiên trả về **`R02-PV`**.
 
-## 4. Rationale
-- Không cần dữ liệu huấn luyện.
-- Quy tắc rõ ràng, ánh xạ 1-1 sang bảng quyết định, dễ review và dễ kiểm thử (có thể viết oracle độc lập trong test).
-- Kết quả giải thích được thông qua mã quy tắc và `ly_do`.
-- Tất định theo thiết kế, đáp ứng AC17.
-- Độ phức tạp tính toán rất thấp, dễ đạt p95 < 100 ms.
-- Phù hợp với phạm vi một module độc lập và thời gian 18 ngày.
+### 2.3. Đánh đổi Thiết kế 1: Xử lý Trường lạ ngoài 9 trường (An toàn PII ↔ Rủi ro Hạ mức)
+- **Các phương án cân nhắc:**
+  - *Phương án 1A (Reject on Unknown Fields):* Từ chối toàn bộ dict đầu vào và trả về `THEO_DOI / null` ngay khi phát hiện bất kỳ khóa nào ngoài 9 trường chuẩn. Phương án này chặn PII đơn giản nhưng gây rủi ro **hạ mức lâm sàng**: nếu hệ thống gọi đính kèm trường metadata hoặc định danh thừa trên một bệnh nhân đang phản vệ/sốc phản vệ cấp cứu, bệnh nhân sẽ bị trả về `THEO_DOI`.
+  - *Phương án 1B (Whitelist Sanitization — Lọc bỏ trường lạ):* Ngay tại biên hàm `classify()`, chỉ giữ lại các khóa nằm trong tập 9 trường chuẩn (`KNOWN_FIELDS`), loại bỏ hoàn toàn các khóa lạ khỏi bộ nhớ xử lý, không bao giờ đọc hoặc đưa tên/giá trị trường lạ vào chuỗi `ly_do` hay `Audit Trail`.
+- **Lựa chọn của nhóm:** Chọn **Phương án 1B (Whitelist Sanitization)**.
+- **Lý do:** Đạt được cả hai mục tiêu: vừa ngăn chặn tuyệt đối rò rỉ PII ra output/audit (Zero PII), vừa giữ nguyên kết quả cảnh báo `PHAN_VE` / `SOC_PHAN_VE` khi dữ liệu lâm sàng hợp lệ đã đủ kết luận.
 
-## 5. Consequences
+### 2.4. Đánh đổi Thiết kế 2: Xử lý Cờ Bool thiếu/null và HATT ngoài miền `1..300`
+- **Với cờ `bool` thiếu khóa hoặc nhận `null` (Issue #15 mục 5):**
+  - Đánh giá các kịch bản `R01-PV`, `R02-PV`, `R03-PV` dựa trên các cờ đang có giá trị `True`/`False` rõ ràng. Nếu các trường hiện có đã đủ làm thỏa trọn vẹn một quy tắc (ví dụ thiếu `co_trieu_chung_ho_hap` nhưng đã có `co_di_nguyen_nghi_ngo = true` và `co_trieu_chung_tuan_hoan = true`), hệ thống **không hạ mức** mà trả về đúng quy tắc đó (`R03-PV`, hoặc `R-SOC` nếu kèm tụt HATT).
+  - Chỉ khi không có quy tắc nào thỏa mãn (kết quả phụ thuộc vào trường bị thiếu), hệ thống mới trả về `THEO_DOI / null` với trạng thái `INVALID_INPUT`.
+  - Các trường `bool` truyền sai kiểu dữ liệu (như `"true"`, `1`, `0`) vẫn bị từ chối là `INVALID_INPUT` để đảm bảo tính chặt chẽ của kiểu dữ liệu (type safety).
+- **Với `huyet_ap_tam_thu` / `huyet_ap_tam_thu_nen` ngoài miền `1..300` hoặc sai kiểu:**
+  - Nếu ca bệnh đã thỏa một kịch bản Phản vệ ở Tầng 2, một giá trị HATT ngoài miền (ví dụ `0`, `-10`, `350`) được xử lý tương tự như trường hợp "không đo được huyết áp" (`null`): không dùng giá trị lỗi đó để kích hoạt nhầm `R-SOC`, nhưng **vẫn giữ nguyên mức `PHAN_VE`** của Tầng 2 thay vì hạ xuống `THEO_DOI`.
+  - Nếu ca bệnh không thỏa kịch bản Tầng 2 nào và có HATT ngoài miền/sai kiểu, hệ thống trả về `THEO_DOI / null` (`INVALID_INPUT`).
 
-### Positive
-- Dễ triển khai và kiểm thử; đủ để bao phủ boundary, priority, invalid, missing.
-- Kết quả nhất quán với cùng đầu vào.
-- Dễ truy vết quy tắc được kích hoạt, thuận lợi cho audit và vấn đáp.
-- Không có phụ thuộc ngoài (chỉ `pytest`), dễ chạy từ clean checkout.
+## 3. Hệ quả (Consequences)
 
-### Negative
-- Độ đúng của hệ thống phụ thuộc hoàn toàn vào độ chính xác của bộ quy tắc; nhóm không đánh giá độ đúng y khoa, chỉ đảm bảo cài đặt trung thành với contract.
-- Khi tiêu chí thay đổi (ví dụ bảng V2), cần cập nhật quy tắc, AC và kiểm thử lại.
-- Không thích ứng với trường hợp ngoài bảng; những ca đó rơi vào `THEO_DOI`.
-- `THEO_DOI` chỉ có nghĩa "chưa đủ dữ kiện kết luận", không phải kết luận an toàn; người dùng module không được hiểu nó như một đánh giá âm tính.
-
-## 6. Risks and Mitigations
-
-- **Cài đặt lệch bảng quyết định** → oracle độc lập trong test (TC54), ca biên có tính tay (TC37–TC45).
-- **Sai số float ở ngưỡng tuổi và giảm 30%** → so sánh số nguyên cho tiêu chí 30%; test tuổi 10.99 và 11.0.
-- **Giả định chưa rõ trong contract (HATT null, miền hợp lệ...)** → ghi ở `REQUIREMENTS.md` mục 11, hỏi TA qua GitHub Issues, test tương ứng đánh dấu ở `test-plan.md` mục 10.
-- **Rò thông tin định danh hoặc dữ liệu thô qua `ly_do` hoặc audit** → AC15, AC16, AC19; test quét chuỗi (TC49, TC52, TC58).
+- **Tích cực:**
+  - Không bỏ sót hoặc hạ mức các ca phản vệ/sốc phản vệ đã có đủ triệu chứng lâm sàng rõ ràng.
+  - Chuỗi `ly_do` sử dụng từ điển thông điệp tĩnh theo mã quy tắc nên loại bỏ 100% nguy cơ rò rỉ dữ liệu lâm sàng thô hoặc thông tin cá nhân (PII).
+  - Thời gian thực thi mỗi lần gọi `classify()` chỉ tốn vài micro-giây (`p95 < 0.05 ms`), vượt xa yêu cầu `< 100 ms`.
+- **Giới hạn & Kiểm soát:**
+  - Cần bộ kiểm thử tự động bao phủ cả nhánh "đủ điều kiện không hạ mức" và nhánh "thiếu dữ liệu phụ thuộc" (đã hiện thực hóa tại `TC03`, `TC05`, `TC08`, `TC11`, `TC14`, `TC33`, `TC34` trong `tests/test_classifier.py`).
