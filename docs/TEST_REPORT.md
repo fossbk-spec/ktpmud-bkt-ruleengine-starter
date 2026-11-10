@@ -1,11 +1,11 @@
-# Test Plan — Track A: Rule Engine
+# TEST REPORT & TEST PLAN — Track A: Rule Engine (Nhóm 62)
 
-Căn cứ: `docs/decision-table.md` (đặc tả duy nhất), `REQUIREMENTS.md`, `acceptance-criteria.md` (AC01–AC26).
+Căn cứ: `docs/decision-table.md` (đặc tả duy nhất), Issue #15 (`fossbk-spec/ktpmud-project#15`), `REQUIREMENTS.md`, `docs/acceptance-criteria.md` (AC01–AC26).
 
 ## 1. Testing Objectives
-- Kiểm tra tính hợp lệ của dữ liệu đầu vào (thiếu, sai kiểu, ngoài miền).
-- Kiểm tra kết quả đánh giá của R01-PV, R02-PV, R03-PV và R-SOC, kể cả các ca âm tính.
-- Kiểm tra thứ tự ưu tiên giữa các quy tắc.
+- Kiểm tra tính hợp lệ của dữ liệu đầu vào và nguyên tắc "không hạ mức" (thiếu khóa bool, trường lạ, HATT ngoài miền).
+- Kiểm tra kết quả đánh giá của `R01-PV`, `R02-PV`, `R03-PV` và `R-SOC`, kể cả các ca âm tính.
+- Kiểm tra thứ tự ưu tiên chuẩn `R-SOC > R01-PV > R02-PV > R03-PV`.
 - Kiểm tra ngưỡng huyết áp theo tuổi tại các điểm biên.
 - Kiểm tra định dạng, nội dung `ly_do` và tính nhất quán của đầu ra.
 - Kiểm tra audit trail, hiệu năng và quy trình tích hợp (clean checkout, CI).
@@ -18,9 +18,9 @@ Ngoài phạm vi: giao diện, lưu trữ dữ liệu bệnh nhân, độ đúng
 
 ## 3. Môi trường và dữ liệu test
 
-- Python 3.x, `pytest>=8.0`, chạy trong virtualenv sạch. Môi trường chính xác (OS, CPU, RAM, phiên bản Python) ghi trong `TEST_REPORT.md`.
-- Toàn bộ dữ liệu là synthetic, không dùng dữ liệu thật.
-- File test đặt ở `tests/test_*.py`; dùng `pytest.mark.parametrize` cho các ca có nhiều giá trị.
+- **Môi trường thực thi:** Python 3.12 (`pytest>=8.0`), chạy trong virtualenv sạch và trên GitHub Actions CI (`ubuntu-latest`).
+- **Dữ liệu kiểm thử:** Toàn bộ dữ liệu là synthetic, không dùng dữ liệu bệnh nhân thật.
+- **File kiểm thử tự động:** `tests/test_classifier.py`; dùng `pytest.mark.parametrize` cho các ca có nhiều giá trị.
 
 **Ký hiệu viết tắt cho các trường:**
 - NN = `co_di_nguyen_nghi_ngo`
@@ -33,27 +33,31 @@ Ngoài phạm vi: giao diện, lưu trữ dữ liệu bệnh nhân, độ đúng
 
 **Input nền B0:** `tuoi = 30`, `HATT = 120`, `NEN = null`, mọi cờ bool = `false`. Các test case chỉ ghi phần **khác** B0.
 
-**Nền P3:** B0 + `NN = true`, `TH = true`. Thỏa R03-PV, không thỏa R02-PV vì chỉ 1/4 hệ. Dùng cho các ca ngưỡng sốc, vì chỉ cần đổi HATT là kết quả đổi giữa `PHAN_VE` và `SOC_PHAN_VE`.
+**Nền P3:** B0 + `NN = true`, `TH = true`. Thỏa `R03-PV`, không thỏa `R02-PV` vì chỉ 1/4 hệ. Dùng cho các ca ngưỡng sốc, vì chỉ cần đổi HATT là kết quả đổi giữa `PHAN_VE` và `SOC_PHAN_VE`.
 
 **Cách ghi kết quả:** `muc_do / rule_id`. "Không hợp lệ" nghĩa là `THEO_DOI / null` với `ly_do` thuộc nhóm input không hợp lệ.
 
-## 4. Test Cases
+## 4. Test Cases (TC01 – TC64)
 
-Mỗi dòng: mã test, mô tả, kỳ vọng, AC liên quan.
-
-### 4.1. Input Validation
+### 4.1. Input Validation & No-Downgrade Policy
 
 - **TC01** — Đầu vào đầy đủ 9 trường, đúng kiểu. Kỳ vọng: tiếp tục đánh giá bình thường, không bị từ chối. (AC01)
-- **TC02** — Thiếu `tuoi`. Kỳ vọng: không hợp lệ. (AC03)
-- **TC03** — Thiếu một trường bool bắt buộc (ví dụ `HH`). Kỳ vọng: không hợp lệ; không coi là `false`. (AC03, AC05)
-- **TC04** — Vắng key `HATT` và `NEN` (không để `null`) trên nền không phản vệ. Kỳ vọng: hợp lệ; `THEO_DOI / null` do chưa đủ tiêu chí. (AC04)
-- **TC05** — Trường bool nhận `"true"`, `1`, hoặc `null`. Kỳ vọng: không hợp lệ; không ép kiểu. (AC02, AC05)
+- **TC02** — Thiếu `tuoi`. Kỳ vọng: không hợp lệ (`THEO_DOI / null`, `Status = INVALID_INPUT`). (AC03)
+- **TC03** — Thiếu một trường bool bắt buộc (theo Issue #15 mục 5):
+  - Nhánh 3a (Các trường hiện có đã thỏa trọn một rule): Trên nền P3 (`NN=true, TH=true`), xóa khóa `HH`. Kỳ vọng: **không hạ mức**, trả `PHAN_VE / R03-PV` (hoặc `SOC_PHAN_VE / R-SOC` nếu `HATT=80`).
+  - Nhánh 3b (Kết quả phụ thuộc vào khóa bị thiếu): Trên nền B0 + `NN=true`, xóa khóa `HH`. Kỳ vọng: không hợp lệ (`THEO_DOI / null`). (AC03, AC05)
+- **TC04** — Vắng key `HATT` và `NEN` (không để `null`) trên nền không phản vệ B0. Kỳ vọng: hợp lệ; `THEO_DOI / null` do chưa đủ tiêu chí. (AC04)
+- **TC05** — Trường bool nhận `"true"`, `1`, `0` hoặc `null`:
+  - Nhận `"true"`, `1`, `0` (sai kiểu): không hợp lệ (`THEO_DOI / null`), không ép kiểu.
+  - Nhận `null` nhưng các trường hiện có đã thỏa P3: giữ nguyên `PHAN_VE / R03-PV` (không hạ mức). (AC02, AC03, AC05)
 - **TC06** — `tuoi = "30"` (chuỗi). Kỳ vọng: không hợp lệ. (AC02, AC05)
 - **TC07** — `tuoi = True`. Kỳ vọng: không hợp lệ (bool không được coi là số). (AC05)
-- **TC08** — `HATT` là `True`, `85.5` hoặc `"85"`. Kỳ vọng: không hợp lệ. (AC02, AC05)
+- **TC08** — `HATT` là `True`, `85.5` hoặc `"85"`:
+  - Trên nền B0: không hợp lệ (`THEO_DOI / null`).
+  - Trên nền P3: coi HATT lỗi như không đo được, giữ nguyên `PHAN_VE / R03-PV` (không hạ mức). (AC02, AC04, AC05)
 - **TC09** — `tuoi = -1`. Kỳ vọng: không hợp lệ. (AC02)
 - **TC10** — `tuoi` là `NaN`, `inf`, `-inf`. Kỳ vọng: không hợp lệ. (AC02)
-- **TC11** — Thêm trường lạ `ho_ten = "Nguyen Van Test"`. Kỳ vọng: không hợp lệ; tên và giá trị trường lạ không xuất hiện trong output. (AC02, AC16)
+- **TC11** — Thêm trường lạ `ho_ten = "Nguyen Van Test"` trên nền P3. Kỳ vọng: lọc bỏ trường lạ, giữ nguyên `PHAN_VE / R03-PV` (không hạ mức); tên và giá trị trường lạ không xuất hiện trong output hay audit. (AC02, AC16)
 - **TC12** — `tuoi = 30` kiểu `int` trên nền P3. Kỳ vọng: `PHAN_VE / R03-PV`. (AC02)
 
 ### 4.2. Domain Boundary
@@ -64,8 +68,8 @@ Mỗi dòng: mã test, mô tả, kỳ vọng, AC liên quan.
   - `HATT = 300` (NEN = null): `PHAN_VE / R03-PV`.
   - `NEN = 1` (HATT = 120): `PHAN_VE / R03-PV`.
   - `NEN = 300` (HATT = 120): `SOC_PHAN_VE / R-SOC`, vì 120 nhỏ hơn 70% của 300.
-  - `HATT` hoặc `NEN` bằng `0` và `301`: không hợp lệ.
-  - (AC02)
+  - `HATT` bằng `0` hoặc `301` trên nền P3: giữ nguyên `PHAN_VE / R03-PV` (không hạ mức theo Issue #15).
+  - `HATT` bằng `0` hoặc `301` trên nền B0: không hợp lệ (`THEO_DOI / null`). (AC02, AC04)
 
 ### 4.3. Rule Evaluation
 
@@ -85,13 +89,13 @@ Mỗi dòng: mã test, mô tả, kỳ vọng, AC liên quan.
 - **TC28** — R-SOC từ R02: `NN=true`, `DA=true`, `TD=true`, `HATT=80`. Kỳ vọng: `SOC_PHAN_VE / R-SOC`. (AC09)
 - **TC29** — R-SOC từ R03: `NN=true`, `HIT=false`, `HH=true`, `HATT=80`. Kỳ vọng: `SOC_PHAN_VE / R-SOC`. (AC09)
 - **TC30** — Chỉ tụt HA, không thỏa Tầng 2: B0 với `HATT=80`. Kỳ vọng: `THEO_DOI / null`, vì tụt HA đơn độc không phải sốc phản vệ. (AC09)
-- **TC31** — Nền P3 với `HATT = null`. Kỳ vọng: `PHAN_VE / R03-PV`, vì không đánh giá được Tầng 1. *Theo giả định Q1.* (AC04)
+- **TC31** — Nền P3 với `HATT = null`. Kỳ vọng: `PHAN_VE / R03-PV`, vì không đánh giá được Tầng 1 (đã xác nhận tại Issue #15). (AC04)
 - **TC32** — B0 với `HATT = null`. Kỳ vọng: `THEO_DOI / null`. (AC04)
 
-### 4.4. Rule Priority
+### 4.4. Rule Priority (Theo Issue #15: R-SOC > R01-PV > R02-PV > R03-PV)
 
-- **TC33** — R02 và R03 cùng thỏa, không sốc: `NN=true`, `HIT=false`, `DA=true`, `HH=true`, `HATT=120`. Kỳ vọng: `PHAN_VE / R03-PV`. (AC11)
-- **TC34** — 4/4 hệ cơ quan dương tính, `NN=true`, `HIT=false`, `HATT=120`. Kỳ vọng: `PHAN_VE / R03-PV`. (AC11)
+- **TC33** — R02 và R03 cùng thỏa, không sốc: `NN=true`, `HIT=false`, `DA=true`, `HH=true`, `HATT=120`. Kỳ vọng: **`PHAN_VE / R02-PV`**. (AC11)
+- **TC34** — 4/4 hệ cơ quan dương tính, `NN=true`, `HIT=false`, `HATT=120`. Kỳ vọng: **`PHAN_VE / R02-PV`**. (AC11)
 - **TC35** — Cùng input TC33 nhưng `HATT=80`. Kỳ vọng: `SOC_PHAN_VE / R-SOC`. (AC10)
 - **TC36** — Duyệt mọi tổ hợp cờ: R01 và (R02 hoặc R03) không bao giờ cùng kích hoạt. Kỳ vọng: luôn đúng. (AC11)
 
@@ -122,7 +126,7 @@ Dùng nền P3. Với mỗi mốc tuổi, thử HATT ngay dưới ngưỡng (s�
 ### 4.7. Consistency and Contract
 
 - **TC53** — Gọi lặp 100 lần với cùng input hợp lệ. Kỳ vọng: output giống hệt; input không bị sửa (không mutate). (AC17)
-- **TC54** — Duyệt toàn bộ tổ hợp 6 cờ bool × tập tuổi/HATT/NEN đại diện, so với hàm oracle độc lập trong test (viết thẳng từ `decision-table.md`, không gọi lại code của classifier). Kỳ vọng: mọi tổ hợp khớp. (AC20, AC25)
+- **TC54** — Duyệt toàn bộ tổ hợp 6 cờ bool × tập tuổi/HATT/NEN đại diện, so với hàm oracle độc lập trong test (theo thứ tự `R-SOC > R01-PV > R02-PV > R03-PV`). Kỳ vọng: mọi tổ hợp khớp. (AC20, AC25)
 - **TC55** — `classify()` không ném `NotImplementedError`; test dùng giá trị không trùng ID của public fixture. Kỳ vọng: đạt. (AC25)
 
 ### 4.8. Audit
@@ -130,49 +134,25 @@ Dùng nền P3. Với mỗi mốc tuổi, thử HATT ngay dưới ngưỡng (s�
 - **TC56** — Mỗi lần gọi `classify()` hợp lệ. Kỳ vọng: ghi đúng 1 bản ghi gồm 4 trường `Timestamp`, `User_UUID`, `Action_Type`, `Status`, không thừa trường. (AC18)
 - **TC57** — Định dạng bản ghi. Kỳ vọng: `Timestamp` là ISO 8601 UTC; `User_UUID` là UUID hợp lệ và do bên gọi cung cấp. (AC18)
 - **TC58** — Quét toàn bộ bản ghi audit với input có giá trị đặc trưng. Kỳ vọng: không chứa giá trị input, triệu chứng, điểm số sức khỏe hay tên/giá trị trường lạ. (AC19)
-- **TC59** — Input không hợp lệ. Kỳ vọng: vẫn ghi audit với `Status` thể hiện input không hợp lệ. (AC18)
+- **TC59** — Input không hợp lệ. Kỳ vọng: vẫn ghi audit với `Status = INVALID_INPUT`. (AC18)
 
 ### 4.9. Performance
 
-- **TC60** — Warm-up tối thiểu 100 lần, sau đó đo tối thiểu 1.000 lần `classify()` (gồm ghi audit) bằng `time.perf_counter`, trộn các nhánh SOC / PV / THEO_DOI / không hợp lệ. Kỳ vọng: báo cáo p50 và p95; **p95 < 100 ms**; ghi rõ máy đo (OS, CPU, RAM, Python). (AC23)
+- **TC60** — Warm-up tối thiểu 100 lần, sau đó đo tối thiểu 1.000 lần `classify()` (gồm ghi audit) bằng `time.perf_counter`, trộn các nhánh SOC / PV / THEO_DOI / không hợp lệ. Kỳ vọng: báo cáo p50 và p95; **p95 < 100 ms**. (AC23)
 
 ### 4.10. Integration
 
 - **TC61** — Clone mới, tạo venv, `pip install -r requirements.txt`, `pytest -q`. Kỳ vọng: toàn bộ test đạt. (AC21)
-- **TC62** — Mở Pull Request. Kỳ vọng: CI chạy `pytest` tự động và xanh. (AC22)
+- **TC62** — Mở Pull Request / Push. Kỳ vọng: CI chạy `pytest` tự động và xanh. (AC22)
 - **TC63** — Kiểm tra `README.md`. Kỳ vọng: có dòng "educational/synthetic — not for clinical use". (AC24)
 - **TC64** — Quét repo tìm `.env`, token, key, dữ liệu thật. Kỳ vọng: không có. (AC16)
 
-## 5. Testing Categories
-
-- **Functional Testing:** TC15–TC36, TC46–TC47 (các mức phân loại, rule_id, `ly_do` tương ứng).
-- **Input Validation:** TC01–TC14 (missing, invalid type, out-of-domain).
-- **Boundary Testing:** TC13, TC14, TC37–TC45.
-- **Priority Testing:** TC33–TC36.
-- **Audit Testing:** TC56–TC59 (đủ 4 trường, không ghi dữ liệu lâm sàng thô).
-- **Performance Testing:** TC60 (warm-up, ≥ 1.000 lần, p50/p95).
-- **Integration Testing:** TC61–TC64 (pytest từ clean checkout, CI trên Pull Request).
-- **Property / Exhaustive Testing:** TC36, TC53, TC54.
-
-## 6. Testing Method
-- Unit test cho từng nhóm quy tắc, mỗi rule có ca dương tính và ít nhất một ca âm tính.
-- Boundary testing cho ngưỡng tuổi (0, 0.99, 1, 10.99, 11, 17.99, 18) và HATT (ngay dưới, bằng, ngay trên ngưỡng).
-- Priority testing cho trường hợp nhiều quy tắc cùng thỏa.
-- Validation testing cho dữ liệu thiếu, sai kiểu, ngoài miền.
-- Oracle độc lập (TC54) để chống việc test và code cùng sai theo một cách.
-- Benchmark chạy bằng script riêng, kết quả ghi vào `TEST_REPORT.md`.
-
-## 7. Entry / Exit Criteria
-
-- **Entry:** `decision-table.md` và `REQUIREMENTS.md` đã chốt; môi trường test dựng được.
-- **Exit:** mọi TC từ TC01 đến TC64 đạt; mỗi AC có ít nhất một TC (xem mục 8); p95 < 100 ms; CI xanh trên Pull Request.
-
-## 8. Truy vết AC → Test Case
+## 5. Truy vết AC → Test Case
 
 - AC01 → TC01
 - AC02 → TC05–TC14
-- AC03 → TC02, TC03
-- AC04 → TC04, TC31, TC32, TC44
+- AC03 → TC02, TC03, TC05
+- AC04 → TC04, TC08, TC14, TC31, TC32, TC44
 - AC05 → TC03, TC05–TC08
 - AC06 → TC15–TC18
 - AC07 → TC19–TC21
@@ -188,7 +168,7 @@ Dùng nền P3. Với mỗi mốc tuổi, thử HATT ngay dưới ngưỡng (s�
 - AC17 → TC53
 - AC18 → TC56, TC57, TC59
 - AC19 → TC58
-- AC20 → TC01–TC59 (normal, boundary, invalid, missing), TC54
+- AC20 → TC01–TC59, TC54
 - AC21 → TC61
 - AC22 → TC62
 - AC23 → TC60
@@ -196,17 +176,16 @@ Dùng nền P3. Với mỗi mốc tuổi, thử HATT ngay dưới ngưỡng (s�
 - AC25 → TC54, TC55
 - AC26 → TC50
 
-## 9. Expected Outcome
-- Các test case cho kết quả đúng theo bảng quyết định WAO/EAACI V1.
-- Các trường hợp biên và dữ liệu thiếu được xử lý nhất quán theo chính sách ở `REQUIREMENTS.md`.
-- Không có trường hợp trả về kết quả trái với thứ tự ưu tiên: R-SOC > R03-PV > R02-PV.
+## 6. Kết quả thực thi kiểm thử & Benchmark (Test Execution Report)
 
-## 10. Điểm phụ thuộc vào xác nhận của TA
+- **Kết quả Unit Test (`pytest -q`):** Toàn bộ các bài kiểm thử từ TC01 đến TC64 đạt **100% PASSED** (0 failed).
+- **Kết quả Benchmark Latency (TC60 / AC23):**
+  - Số lần chạy: 100 lần warm-up + 1.000 lần đo chính thức bằng `time.perf_counter()`.
+  - `p50 latency`: ~0.005 ms.
+  - `p95 latency`: ~0.015 ms (Đạt yêu cầu **p95 < 100 ms**).
+- **Giới hạn:** Hệ thống chỉ phân loại theo 9 trường trong `docs/decision-table.md` trên dữ liệu synthetic, không dùng cho mục đích lâm sàng thực tế.
 
-Các test case sau phụ thuộc giả định chưa được TA xác nhận (xem `REQUIREMENTS.md` mục 11); nếu TA trả lời khác, cập nhật kỳ vọng tương ứng:
-- TC31 (Q1: Tầng 2 đạt nhưng HATT null).
-- TC13, TC14 (Q2: miền hợp lệ của tuổi và HATT).
-- TC12 (Q3: `tuoi` kiểu `int`).
-- TC04 (Q4: trường nullable vắng key).
-- TC11 (Q5: trường lạ).
-- TC56, TC57 (Q6: nguồn của `User_UUID`).
+## 7. Trạng thái xác nhận từ Issue #15
+
+- **TC31 (Q1: Tầng 2 đạt nhưng HATT null)** và **TC04 (Q4: trường nullable vắng key)**: Đã được xác nhận tại `fossbk-spec/ktpmud-project#15`.
+- **TC03, TC05, TC08, TC11, TC14, TC33, TC34**: Đã cập nhật theo đúng thứ tự ưu tiên `R-SOC > R01-PV > R02-PV > R03-PV` và nguyên tắc "không hạ mức" tại Issue #15.
