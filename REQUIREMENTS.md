@@ -1,5 +1,5 @@
 # REQUIREMENTS — Dr May Day: Rule Engine Sprint (Track A)
-- Nguồn đặc tả duy nhất: `docs/decision-table.md` (tag `bkt-2026-v1`) và Issue #15 (`fossbk-spec/ktpmud-project#15`).
+- Nguồn đặc tả duy nhất: `docs/decision-table.md` (tag `bkt-2026-v1`) và Issue #15 https://github.com/fossbk-spec/ktpmud-project/issues/15.
 
 ## 1. Mục đích
 
