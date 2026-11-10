@@ -1,0 +1,21 @@
+{
+  "track": "Track A",
+  "project_name": "Dr May Day: Rule Engine Sprint",
+  "team_id": "Nhóm 07",
+  "slug": "may_day_sprint",
+  "submission_date": "2026-11-15",
+  "members": [
+    {
+      "name": "Trần Minh Quân",
+      "id": "202414322"
+    },
+    {
+      "name": "Vũ Ngọc Quang",
+      "id": "202414335 "
+    }
+     {
+      "name": "việt Anh",
+      "id": "202414975"
+    },
+  ]
+}
