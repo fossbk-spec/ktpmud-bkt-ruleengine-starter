@@ -20,8 +20,8 @@
     - `docs/adr/ADR-001-rule-based-engine.md`: Ghi rõ phân tích đánh đổi giữa an toàn PII và rủi ro hạ mức lâm sàng.
 - [x] **Hiện thực hóa Rule Engine & Audit Trail (M2): Xong**
   * *Bằng chứng:* File `rule_engine/classifier.py` hiện thực đầy đủ phân loại 2 tầng, tính giảm 30% HATT bằng số nguyên, lọc trắng 9 trường và ghi Audit Trail 4 trường `[Timestamp, User_UUID, Action_Type, Status]`.
-- [x] **Bộ kiểm thử tự động TC01–TC64 & Hàm Oracle độc lập: Xong**
-  * *Bằng chứng:* File `tests/test_classifier.py` chạy đạt 100% qua lệnh `pytest -q` từ clean checkout.
+- [ ] **Bộ kiểm thử tự động TC01–TC64 & Hàm Oracle độc lập: Đang sửa chữa và bổ sung**
+  * *Trạng thái:* File `tests/test_classifier.py` đã có bộ kiểm thử cơ bản vượt qua `pytest -q`, nhóm đang tiếp tục rà soát chéo và bổ sung đầy đủ toàn bộ các ca kiểm thử biên còn lại cùng hàm Oracle độc lập theo `docs/TEST_REPORT.md`.
 - [x] **Benchmark độ trễ (Latency < 100 ms): Xong**
   * *Bằng chứng:* Script `benchmarks/run_benchmark.py` và `TEST_REPORT.md` (100 lần warm-up + 1.000 lần đo, `p95 < 1 ms`).
 
