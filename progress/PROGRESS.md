@@ -16,7 +16,7 @@
   * *Bằng chứng:*
     - `REQUIREMENTS.md`: Đổi thứ tự ưu tiên thành `R-SOC > R01-PV > R02-PV > R03-PV` (FR-08); cập nhật nguyên tắc "không hạ mức" cho cờ bool thiếu/null, trường lạ và HATT ngoài miền; cập nhật trạng thái Q1, Q4.
     - `docs/acceptance-criteria.md`: Cập nhật AC02–AC05, AC11, AC16.
-    - `docs/test-plan.md`: Cập nhật kỳ vọng `TC03`, `TC05`, `TC08`, `TC11`, `TC14`, `TC33`, `TC34` (`PHAN_VE / R02-PV`).
+    - `docs/TEST_REPORT.md`: Cập nhật kỳ vọng `TC03`, `TC05`, `TC08`, `TC11`, `TC14`, `TC33`, `TC34` (`PHAN_VE / R02-PV`).
     - `docs/adr/ADR-001-rule-based-engine.md`: Ghi rõ phân tích đánh đổi giữa an toàn PII và rủi ro hạ mức lâm sàng.
 - [x] **Hiện thực hóa Rule Engine & Audit Trail (M2): Xong**
   * *Bằng chứng:* File `rule_engine/classifier.py` hiện thực đầy đủ phân loại 2 tầng, tính giảm 30% HATT bằng số nguyên, lọc trắng 9 trường và ghi Audit Trail 4 trường `[Timestamp, User_UUID, Action_Type, Status]`.
