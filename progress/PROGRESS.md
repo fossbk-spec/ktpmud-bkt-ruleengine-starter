@@ -42,4 +42,4 @@
 
 ## 3. Câu hỏi của nhóm gửi Giảng viên / TA tại buổi PC-1
 
-1. Không
+1. Nhóm em đã chỉnh sửa lại Checkpoint 1, mong thầy kiểm tra lại ạ.
